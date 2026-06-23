@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Servicios Activos — MCS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --mcs-blue:    #2E3F8F;
+    --mcs-blue-dk: #1E2D6E;
+    --mcs-blue-lt: #E8ECF8;
+    --mcs-blue-md: #4A5BA8;
+    --gray-50:  #F8F9FA;
+    --gray-100: #F1F3F5;
+    --gray-200: #E9ECEF;
+    --gray-400: #ADB5BD;
+    --gray-600: #6C757D;
+    --gray-800: #343A40;
+    --gray-900: #212529;
+    --red:    #DC3545;
+    --red-lt: #FDE8EA;
+    --yellow: #C97A00;
+    --yel-lt: #FFF3CD;
+    --green:  #198754;
+    --grn-lt: #D1E7DD;
+    --white:  #FFFFFF;
+    --border: #DEE2E6;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --radius: 8px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    color: var(--gray-900);
+    background: var(--gray-100);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--mcs-blue);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .logo-wrap img { height: 36px; display: block; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .header-meta { color: rgba(255,255,255,.65); font-size: 12px; text-align: right; line-height: 1.4; }
+  .btn-refresh {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: var(--radius);
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-refresh:hover { background: rgba(255,255,255,.25); }
+  .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
+  .spin { animation: spin .7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Main ── */
+  main { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+
+  /* ── KPI cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+  }
+  .kpi-value { font-size: 26px; font-weight: 600; color: var(--gray-900); line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--gray-600); margin-top: 5px; }
+  .kpi-alert .kpi-value { color: var(--red); }
+  .kpi-warn  .kpi-value { color: var(--yellow); }
+  .kpi-blue  .kpi-value { color: var(--mcs-blue); }
+
+  /* ── Filters ── */
+  .filter-bar {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .filter-bar input[type=text],
+  .filter-bar select {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--gray-900);
+    background: var(--white);
+    outline: none;
+    height: 34px;
+  }
+  .filter-bar input[type=text] { width: 200px; }
+  .filter-bar input[type=text]:focus,
+  .filter-bar select:focus { border-color: var(--mcs-blue); box-shadow: 0 0 0 3px rgba(46,63,143,.12); }
+  .btn-clear {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-weight: 500;
+  }
+  .btn-clear:hover { background: var(--gray-200); }
+  .filter-count { margin-left: auto; font-size: 12px; color: var(--gray-600); white-space: nowrap; }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1080px; }
+  thead th {
+    background: var(--gray-50);
+    border-bottom: 2px solid var(--border);
+    padding: 11px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--gray-600);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { background: var(--mcs-blue-lt); color: var(--mcs-blue); }
+  thead th.sorted { background: var(--mcs-blue-lt); color: var(--mcs-blue); }
+  thead th .arrow { opacity: .35; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover td { background: var(--gray-50); }
+  td { padding: 10px 12px; vertical-align: middle; font-size: 13px; }
+
+  .cell-name { font-size: 12px; line-height: 1.35; color: var(--gray-900); }
+  .cell-secondary { font-size: 12px; color: var(--gray-600); }
+  .cell-client { font-weight: 600; font-size: 12px; }
+  .cell-money { text-align: right; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+  .b-oro    { background: #FFF3CD; color: #856404; border: 1px solid #FFE69C; }
+  .b-plata  { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--border); }
+  .b-ing    { background: var(--mcs-blue-lt); color: var(--mcs-blue); border: 1px solid #C5CCE8; }
+  .b-bolsa  { background: #D1E7DD; color: #0A3622; border: 1px solid #A3CFBB; }
+
+  /* Porcentaje bar */
+  .pct-wrap { display: flex; align-items: center; gap: 8px; }
+  .pct-bar-bg { flex: 1; height: 6px; background: var(--gray-200); border-radius: 3px; min-width: 50px; }
+  .pct-bar-fill { height: 100%; border-radius: 3px; background: var(--mcs-blue); }
+  .pct-bar-fill.low { background: var(--red); }
+  .pct-bar-fill.mid { background: var(--yellow); }
+  .pct-label { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+
+  /* Expiration dot */
+  .exp-cell { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-red    { background: var(--red); }
+  .dot-yellow { background: #FFC107; }
+  .dot-green  { background: var(--green); }
+  .dot-gray   { background: var(--gray-400); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--gray-600);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--gray-900);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all .25s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.error { background: var(--red); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px; color: var(--gray-600); }
+  .empty svg { margin-bottom: 12px; opacity: .4; }
+
+  /* Charts */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .chart-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .chart-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--gray-600);
+    margin-bottom: 14px;
+  }
+  .chart-card.wide { grid-column: span 2; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <img src="https://portal.mcs.com.mx/lovable-uploads/246f1c9b-df18-4ddc-b0c3-810e5a3b8738.png" alt="MCS" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+    <span style="display:none; color:#fff; font-size:22px; font-weight:700; letter-spacing:1px;">MCS</span>
+  </div>
+  <div class="header-right">
+    <div class="header-meta">
+      <div style="color:#fff; font-weight:600; font-size:13px;">Dashboard Servicios Activos</div>
+      <div id="last-update">SERVICIOS 2026 · Grupo: Servicios Activos</div>
+    </div>
+    <button class="btn-refresh" id="btn-refresh" onclick="fetchFromMonday()">
+      <span id="refresh-icon">↻</span>
+      <span id="refresh-label">Actualizar datos</span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="charts-grid">
+    <div class="chart-card wide">
+      <div class="chart-title">Venta mensual por cliente</div>
+      <div style="position:relative;height:320px">
+        <canvas id="chartCliente" role="img" aria-label="Venta mensual total agrupada por cliente"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Distribución por tipo de servicio</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartTipo" role="img" aria-label="Distribución de servicios por tipo"></canvas>
+      </div>
+    </div>
+    <div class="chart-card wide">
+      <div class="chart-title">Distribución por nivel de servicio</div>
+      <div style="position:relative;height:200px">
+        <canvas id="chartNivel" role="img" aria-label="Distribución de servicios por nivel"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Vencimiento de contratos</div>
+      <div style="position:relative;height:200px">
+        <canvas id="chartVenc" role="img" aria-label="Contratos agrupados por estado de vencimiento"></canvas>
+      </div>
+    </div>
+    <div class="chart-card" style="grid-column: span 3">
+      <div class="chart-title">No. de pólizas por cliente</div>
+      <div style="position:relative;height:380px">
+        <canvas id="chartPolizas" role="img" aria-label="Número de contratos de servicio por cliente"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <input type="text" id="fq" placeholder="🔍 Buscar servicio, cliente, arquitectura…" oninput="applyFilters()">
+    <select id="fam" onchange="applyFilters()"><option value="">Todos los AM</option></select>
+    <select id="ftipo" onchange="applyFilters()"><option value="">Tipo de servicio</option></select>
+    <select id="fnivel" onchange="applyFilters()"><option value="">Nivel de servicio</option></select>
+    <select id="fcliente" onchange="applyFilters()"><option value="">Cliente</option></select>
+    <button class="btn-clear" onclick="resetFilters()">✕ Limpiar filtros</button>
+    <span class="filter-count" id="filter-count"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:220px" onclick="sortBy('name')">Servicio <span class="arrow" id="a-name">↕</span></th>
+          <th style="width:120px" onclick="sortBy('cliente')">Cliente <span class="arrow" id="a-cliente">↕</span></th>
+          <th style="width:110px" onclick="sortBy('am')">AM <span class="arrow" id="a-am">↕</span></th>
+          <th style="width:115px" onclick="sortBy('tipo')">Tipo <span class="arrow" id="a-tipo">↕</span></th>
+          <th style="width:130px" onclick="sortBy('arq')">Arquitectura <span class="arrow" id="a-arq">↕</span></th>
+          <th style="width:90px"  onclick="sortBy('nivel')">Nivel <span class="arrow" id="a-nivel">↕</span></th>
+          <th style="width:115px; text-align:right" onclick="sortBy('venta')">Venta mensual <span class="arrow" id="a-venta">↕</span></th>
+          <th style="width:140px" onclick="sortBy('pct')">% Utilidad <span class="arrow" id="a-pct">↕</span></th>
+          <th style="width:105px" onclick="sortBy('fin')">Finaliza <span class="arrow" id="a-fin">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-top:12px;">
+    <div class="legend">
+      <span class="legend-item"><span class="dot dot-red"></span>Vence &lt; 30 días</span>
+      <span class="legend-item"><span class="dot dot-yellow"></span>Vence 30–90 días</span>
+      <span class="legend-item"><span class="dot dot-green"></span>Vence &gt; 90 días</span>
+      <span class="legend-item"><span class="dot dot-gray"></span>Sin fecha de término</span>
+    </div>
+    <div style="font-size:11px; color:var(--gray-600); margin-top:8px;" id="total-label"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const BOARD_ID = '7265884985';
+const GROUP_ID = 'topics';
+
+// ─── Initial dataset (loaded from Monday.com on 2026-06-22) ───────────────────
+let DATA = [
+  {id:"11996570574",name:"Servicios Administrados Switches, APs",cliente:"MAGNA EXTERIORS",am:"Daniel De La Rosa",tipo:"Servicio Administrado",arq:"Switching & Routing, Wireless",nivel:"ORO",venta:10161.55,costo:8230.86,fin:"2027-04-30"},
+  {id:"11354392077",name:"Extension de Contratos",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:1087152.30,costo:884061.056,fin:"2026-07-31"},
+  {id:"12342474950",name:"Túnel Lieja — Cobertura celular voz/datos",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"DAS",nivel:"ORO",venta:3182.60,costo:2243.10,fin:""},
+  {id:"12342505232",name:"BBVA SBR Coyoacan",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"Cybersecurity",nivel:"ING SITIO",venta:23275.86,costo:13818.88,fin:""},
+  {id:"12342515445",name:"BBVA DAS Prado Norte",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"DAS",nivel:"ORO",venta:6571.43,costo:5199.97,fin:""},
+  {id:"12342528467",name:"BBVA Autopark Samara Satélite DAS",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"DAS",nivel:"ORO",venta:4772.58,costo:3411.92,fin:""},
+  {id:"12342506512",name:"BBVA SBR Prado Norte Cybersecurity",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"Cybersecurity",nivel:"ING SITIO",venta:92142.83,costo:58989.84,fin:""},
+  {id:"12342519681",name:"BBVA 151 Antenas",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"DAS",nivel:"ORO",venta:271799.27,costo:217439.42,fin:""},
+  {id:"12342552432",name:"BBVA Salas Prado Norte",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Servicio Administrado",arq:"Collaboration",nivel:"ING SITIO",venta:86137.00,costo:60295.90,fin:""},
+  {id:"12342552587",name:"Propuesta Finiquito 24 meses",cliente:"GONHER",am:"Rosario Chavez",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:207269.83,costo:52086.91,fin:"2027-08-31"},
+  {id:"7265885175",name:"15 Salas Formación",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:300512.50,costo:288492.50,fin:"2026-08-31"},
+  {id:"7265885183",name:"OpenSpace",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:119515.58,costo:114734.92,fin:"2027-10-30"},
+  {id:"9283036911",name:"34 Salas Típicas SAT-SFE-TOL-TIJ-GDA-MON-PUE",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:340705.96,costo:315394.79,fin:"2028-04-30"},
+  {id:"9283151731",name:"20 Salas Hub (Toluca, Centro, Satélite, SFE)",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:71935.00,costo:59510.00,fin:"2028-04-30"},
+  {id:"9283208703",name:"17 Salas VC 8 pax",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:2555.68,costo:1661.19,fin:"2026-10-30"},
+  {id:"9283254824",name:"50 Antenas — Instalación y SA",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"RF",nivel:"ORO",venta:636519.61,costo:432833.33,fin:"2028-11-01"},
+  {id:"9283324296",name:"Salas VC Mérida Torre 1",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:55986.11,costo:36390.97,fin:"2028-09-30"},
+  {id:"7265885222",name:"SBR",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Cybersecurity, Wireless",nivel:"ING SITIO",venta:873526.24,costo:679349.94,fin:"2027-10-14"},
+  {id:"7265885144",name:"99 Salas",cliente:"BBVA",am:"Ivan Jimenez",tipo:"Ingeniero en Sitio",arq:"Collaboration",nivel:"ING SITIO",venta:338533.41,costo:12040.63,fin:"2026-08-30"},
+  {id:"7265885177",name:"2 Ings. en Sitio Bridgestone (Edgar, Jesus)",cliente:"BRIDGESTONE",am:"Rosario Chavez",tipo:"Ingeniero en Sitio",arq:"Technical Support",nivel:"ING SITIO",venta:73327.06,costo:58800.00,fin:"2026-06-30"},
+  {id:"9284200312",name:"2 Ings. Nocturnos Bridgestone (Uriel, Daniel)",cliente:"BRIDGESTONE",am:"Rosario Chavez",tipo:"Ingeniero en Sitio",arq:"Technical Support",nivel:"ING SITIO",venta:96182.85,costo:72137.14,fin:"2026-06-30"},
+  {id:"9284371342",name:"1 Ing. Coordinador Bridgestone (Erick)",cliente:"BRIDGESTONE",am:"Rosario Chavez",tipo:"Ingeniero en Sitio",arq:"Technical Support",nivel:"ING SITIO",venta:36506.64,costo:23247.34,fin:"2026-06-30"},
+  {id:"7265885156",name:"SALAMANCA (2 Ings. Soporte en Sitio)",cliente:"DALTILE",am:"Alfredo Rodriguez",tipo:"Ingeniero en Sitio",arq:"Technical Support",nivel:"ING SITIO",venta:36000.00,costo:24000.00,fin:""},
+  {id:"9203200826",name:"Ing. en Sitio Alejandro Rivera",cliente:"INLOSA",am:"Rosario Chavez",tipo:"Ingeniero en Sitio",arq:"Technical Support",nivel:"ING SITIO",venta:73085.08,costo:47505.30,fin:"2027-12-31"},
+  {id:"7265885250",name:"Servicio Administrado Garza Ponce",cliente:"GARZA PONCE",am:"Andres Gonzalez",tipo:"Servicio Administrado",arq:"CCTV, Cybersecurity, S&R, Wireless",nivel:"ORO",venta:86594.78,costo:64946.09,fin:"2026-06-30"},
+  {id:"7265885174",name:"Mantenimiento red conmutadores IP SEDENA",cliente:"SEDENA",am:"Jesus Zepeda",tipo:"Servicio Administrado",arq:"Collaboration, S&R, Data Center, Energia",nivel:"ORO",venta:1076672.20,costo:807504.15,fin:"2026-12-31"},
+  {id:"11996559725",name:"Servicios Administrados Fortigate",cliente:"MAGNA EXTERIORS",am:"Daniel De La Rosa",tipo:"Servicio Administrado",arq:"Cybersecurity",nivel:"ORO",venta:7186.97,costo:5605.83,fin:"2027-04-30"},
+  {id:"9342899736",name:"Mantenimiento de IDFs",cliente:"MAGNA POWER TRAIN",am:"Roberto Chavez",tipo:"Ingeniero en Sitio",arq:"Infra Cableado",nivel:"ING SITIO",venta:187231.21,costo:140423.41,fin:"2026-11-30"},
+  {id:"12342619134",name:"Stock en Sitio MAGNA Power Train",cliente:"MAGNA POWER TRAIN",am:"Roberto Chavez",tipo:"Ingeniero en Sitio",arq:"Infra Cableado",nivel:"ING SITIO",venta:36000.00,costo:27655.20,fin:"2026-11-30"},
+  {id:"7265885267",name:"Switches VSAN",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:29193.05,costo:14336.79,fin:"2029-02-28"},
+  {id:"9206698121",name:"VSAN Equipamiento-Servicios",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:47354.14,costo:35923.80,fin:"2029-02-28"},
+  {id:"9206779939",name:"Servicio CCTV El Dorado",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"CCTV",nivel:"ORO",venta:790.63,costo:513.91,fin:"2029-04-30"},
+  {id:"9206814220",name:"18 Sitios — Switches Aruba Actualización LAN",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:76200.00,costo:60960.00,fin:"2028-04-30"},
+  {id:"10614192638",name:"Quad3 Corporativo (Soporte Remoto)",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:7866.15,costo:5113.00,fin:"2026-11-21"},
+  {id:"9338089635",name:"Equipamiento Prevención Liverpool",cliente:"LIVERPOOL",am:"Alejandro Barrera",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:7115.67,costo:4625.19,fin:"2029-05-31"},
+  {id:"7265885171",name:"Servicio Administrado Notaria 51",cliente:"NOTARIA 51",am:"Rodolfo Botello",tipo:"Servicio Administrado",arq:"Switching & Routing",nivel:"ORO",venta:20000.00,costo:10000.00,fin:"2026-08-08"},
+  {id:"7316673725",name:"Bolsa Tickets BBVA Miami",cliente:"BBVA",am:"Angelica Ruelas",tipo:"Bolsa de Tickets",arq:"Switching & Routing",nivel:"BOLSA TICKETS",venta:8705.29,costo:6093.75,fin:"2028-08-01"},
+  {id:"7763041179",name:"Bolsa de Tickets Escuela BBVA Acolman",cliente:"BBVA",am:"Angelica Ruelas",tipo:"Bolsa de Tickets",arq:"Switching & Routing, Wireless",nivel:"BOLSA TICKETS",venta:1350.30,costo:833.33,fin:"2027-11-01"},
+  {id:"7265885170",name:"DAL-TILE Póliza Monitoreo Remoto NOC",cliente:"DALTILE",am:"Alfredo Rodriguez",tipo:"Monitoreo Administrado",arq:"Switching & Routing",nivel:"ORO",venta:6600.00,costo:4290.00,fin:""},
+  {id:"7763064031",name:"Bolsa de Tickets Escuela BBVA Veracruz",cliente:"BBVA",am:"Angelica Ruelas",tipo:"Bolsa de Tickets",arq:"Switching & Routing, Wireless",nivel:"BOLSA TICKETS",venta:2314.81,costo:1666.67,fin:"2027-11-01"},
+  {id:"12016556881",name:"Servicios Administrados Grupo Reforma",cliente:"GRUPO REFORMA",am:"Rodolfo Gonzalez",tipo:"Servicio Administrado",arq:"Collaboration, Switching & Routing",nivel:"PLATA",venta:172532.81,costo:55322.27,fin:"2026-08-01"}
+];
+
+// Enrich with computed fields
+DATA.forEach(r => {
+  r.utilidad = r.venta - r.costo;
+  r.pct = r.venta > 0 ? (r.utilidad / r.venta) * 100 : 0;
+});
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let filtered = [...DATA];
+let sortCol = null, sortDir = 1;
+const TODAY = new Date();
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function days(fin) {
+  if (!fin) return null;
+  return Math.round((new Date(fin) - TODAY) / 86400000);
+}
+
+function fmtMoney(v) {
+  return '$' + Math.round(v).toLocaleString('es-MX');
+}
+
+function fmtDate(fin) {
+  if (!fin) return '<span style="color:var(--gray-400)">—</span>';
+  const [y, m, d] = fin.split('-');
+  const mn = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d} ${mn[+m-1]} ${y}`;
+}
+
+function dotClass(fin) {
+  const d = days(fin);
+  if (d === null) return 'dot-gray';
+  if (d <= 0) return 'dot-red';
+  if (d <= 30) return 'dot-red';
+  if (d <= 90) return 'dot-yellow';
+  return 'dot-green';
+}
+
+function dotTitle(fin) {
+  const d = days(fin);
+  if (d === null) return 'Sin fecha de término';
+  if (d <= 0) return 'Contrato vencido';
+  return `Vence en ${d} días`;
+}
+
+function badgeClass(n) {
+  return {ORO:'b-oro', PLATA:'b-plata', 'ING SITIO':'b-ing', 'BOLSA TICKETS':'b-bolsa'}[n] || 'b-plata';
+}
+
+function pctBarClass(pct) {
+  if (pct < 15) return 'low';
+  if (pct < 25) return 'mid';
+  return '';
+}
+
+function pctColor(pct) {
+  if (pct < 15) return 'var(--red)';
+  if (pct < 25) return 'var(--yellow)';
+  return 'var(--mcs-blue)';
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = isError ? 'error show' : 'show';
+  setTimeout(() => t.className = '', 3000);
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const tbody = document.getElementById('tbody');
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">
+      <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div>Sin resultados para los filtros seleccionados</div>
+    </td></tr>`;
+    document.getElementById('filter-count').textContent = '';
+    document.getElementById('total-label').textContent = '';
+    updateKPIs([]);
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const pctW = Math.min(r.pct, 100).toFixed(1);
+    const dc = dotClass(r.fin);
+    return `<tr>
+      <td title="${r.name}"><div class="cell-name" style="max-width:215px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</div></td>
+      <td class="cell-client">${r.cliente}</td>
+      <td class="cell-secondary">${r.am}</td>
+      <td class="cell-secondary" style="font-size:11px">${r.tipo}</td>
+      <td class="cell-secondary" style="font-size:11px">${r.arq}</td>
+      <td><span class="badge ${badgeClass(r.nivel)}">${r.nivel}</span></td>
+      <td class="cell-money">${fmtMoney(r.venta)}</td>
+      <td>
+        <div class="pct-wrap">
+          <div class="pct-bar-bg"><div class="pct-bar-fill ${pctBarClass(r.pct)}" style="width:${pctW}%;background:${pctColor(r.pct)}"></div></div>
+          <span class="pct-label" style="color:${pctColor(r.pct)}">${r.pct.toFixed(1)}%</span>
+        </div>
+      </td>
+      <td>
+        <div class="exp-cell">
+          <span class="dot ${dc}" title="${dotTitle(r.fin)}"></span>
+          ${fmtDate(r.fin)}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const tVenta = filtered.reduce((s, r) => s + r.venta, 0);
+  const tUtil  = filtered.reduce((s, r) => s + r.utilidad, 0);
+  document.getElementById('filter-count').textContent = `${filtered.length} de ${DATA.length} servicios`;
+  document.getElementById('total-label').textContent =
+    `Venta total: ${fmtMoney(tVenta)} · Utilidad total: ${fmtMoney(tUtil)} (${((tUtil/tVenta)*100).toFixed(1)}%)`;
+  updateKPIs(filtered);
+  if (typeof buildCharts === 'function') buildCharts(filtered);
+}
+
+function updateKPIs(data) {
+  const d = data.length ? data : DATA;
+  const tVenta = d.reduce((s, r) => s + r.venta, 0);
+  const tUtil  = d.reduce((s, r) => s + r.utilidad, 0);
+  const clientes = new Set(d.map(r => r.cliente)).size;
+  const urg   = d.filter(r => { const x = days(r.fin); return x !== null && x >= 0 && x <= 30; }).length;
+  const prox  = d.filter(r => { const x = days(r.fin); return x !== null && x > 30 && x <= 90; }).length;
+  const pctGlobal = tVenta > 0 ? (tUtil / tVenta * 100).toFixed(1) : '0.0';
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi kpi-blue">
+      <div class="kpi-label">Servicios activos</div>
+      <div class="kpi-value">${d.length}</div>
+      <div class="kpi-sub">${clientes} cliente${clientes !== 1 ? 's' : ''} únicos</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Venta mensual total</div>
+      <div class="kpi-value" style="font-size:20px">${fmtMoney(tVenta)}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Utilidad mensual total</div>
+      <div class="kpi-value" style="font-size:20px">${fmtMoney(tUtil)}</div>
+      <div class="kpi-sub">Margen promedio: ${pctGlobal}%</div>
+    </div>
+    <div class="kpi ${urg > 0 ? 'kpi-alert' : ''}">
+      <div class="kpi-label">Vencen &lt; 30 días</div>
+      <div class="kpi-value">${urg}</div>
+      ${urg > 0 ? '<div class="kpi-sub" style="color:var(--red)">⚠ Requieren atención</div>' : '<div class="kpi-sub">Sin urgentes</div>'}
+    </div>
+    <div class="kpi ${prox > 0 ? 'kpi-warn' : ''}">
+      <div class="kpi-label">Vencen 30–90 días</div>
+      <div class="kpi-value">${prox}</div>
+      ${prox > 0 ? `<div class="kpi-sub" style="color:var(--yellow)">Próximamente</div>` : '<div class="kpi-sub">Sin próximos</div>'}
+    </div>
+  `;
+}
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q  = document.getElementById('fq').value.toLowerCase();
+  const am = document.getElementById('fam').value;
+  const tp = document.getElementById('ftipo').value;
+  const nv = document.getElementById('fnivel').value;
+  const cl = document.getElementById('fcliente').value;
+  filtered = DATA.filter(r =>
+    (!q  || r.name.toLowerCase().includes(q) || r.cliente.toLowerCase().includes(q)
+         || r.arq.toLowerCase().includes(q)  || r.am.toLowerCase().includes(q)) &&
+    (!am || r.am === am) && (!tp || r.tipo === tp) &&
+    (!nv || r.nivel === nv) && (!cl || r.cliente === cl)
+  );
+  if (sortCol) applySortToFiltered();
+  render();
+}
+
+function resetFilters() {
+  ['fq','fam','ftipo','fnivel','fcliente'].forEach(id => {
+    const el = document.getElementById(id);
+    el.tagName === 'INPUT' ? el.value = '' : el.value = '';
+  });
+  filtered = [...DATA];
+  if (sortCol) applySortToFiltered();
+  render();
+}
+
+function populateDropdowns() {
+  const add = (id, arr) => arr.sort().forEach(v => {
+    const o = document.createElement('option');
+    o.value = o.textContent = v;
+    document.getElementById(id).appendChild(o);
+  });
+  add('fam',     [...new Set(DATA.map(r => r.am))]);
+  add('ftipo',   [...new Set(DATA.map(r => r.tipo))]);
+  add('fnivel',  [...new Set(DATA.map(r => r.nivel))]);
+  add('fcliente',[...new Set(DATA.map(r => r.cliente))]);
+}
+
+// ─── Sort ─────────────────────────────────────────────────────────────────────
+function sortBy(col) {
+  document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+  document.querySelectorAll('.arrow').forEach(a => a.textContent = '↕');
+  sortDir = sortCol === col ? sortDir * -1 : 1;
+  sortCol = col;
+  const el = document.getElementById('a-' + col);
+  if (el) { el.textContent = sortDir === 1 ? '↑' : '↓'; el.closest('th').classList.add('sorted'); }
+  applySortToFiltered();
+  render();
+}
+
+function applySortToFiltered() {
+  filtered.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (sortCol === 'fin') { va = va || 'ZZZZ'; vb = vb || 'ZZZZ'; }
+    if (typeof va === 'number') return (va - vb) * sortDir;
+    return String(va).localeCompare(String(vb), 'es') * sortDir;
+  });
+}
+
+// ─── Monday.com API refresh ───────────────────────────────────────────────────
+const QUERY = `{
+  boards(ids: [${BOARD_ID}]) {
+    groups(ids: ["${GROUP_ID}"]) {
+      items_page(limit: 200) {
+        items {
+          id name
+          column_values(ids: ["men__desplegable","men__desplegable8","men__desplegable2","men__desplegable0","estado8","n_meros3","dup__of_costo_mensual_muamba_","fecha1"]) {
+            id text
+          }
+        }
+      }
+    }
+  }
+}`;
+
+function parseMonday(responseData) {
+  const items = responseData.data.boards[0].groups[0].items_page.items;
+  return items.map(item => {
+    const cv = {};
+    item.column_values.forEach(c => { cv[c.id] = c.text || ''; });
+    const venta = parseFloat(cv['n_meros3']) || 0;
+    const costo = parseFloat(cv['dup__of_costo_mensual_muamba_']) || 0;
+    const utilidad = venta - costo;
+    return {
+      id: item.id,
+      name: item.name,
+      cliente: cv['men__desplegable'] || '—',
+      am: cv['men__desplegable8'] || '—',
+      tipo: cv['men__desplegable2'] || '—',
+      arq: cv['men__desplegable0'] || '—',
+      nivel: cv['estado8'] || '—',
+      venta,
+      costo,
+      utilidad,
+      pct: venta > 0 ? (utilidad / venta) * 100 : 0,
+      fin: cv['fecha1'] || ''
+    };
+  });
+}
+
+async function fetchFromMonday() {
+  const btn = document.getElementById('btn-refresh');
+  const icon = document.getElementById('refresh-icon');
+  const label = document.getElementById('refresh-label');
+  btn.disabled = true;
+  icon.textContent = '↻';
+  icon.classList.add('spin');
+  label.textContent = 'Actualizando…';
+
+  try {
+    const res = await fetch('/api/monday', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: QUERY })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.errors) throw new Error(json.errors[0].message);
+
+    DATA = parseMonday(json);
+    filtered = [...DATA];
+    sortCol = null;
+    sortDir = 1;
+    document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+    document.querySelectorAll('.arrow').forEach(a => a.textContent = '↕');
+
+    // Rebuild dropdowns
+    ['fam','ftipo','fnivel','fcliente'].forEach(id => {
+      const el = document.getElementById(id);
+      while (el.options.length > 1) el.remove(1);
+    });
+    populateDropdowns();
+    applyFilters();
+
+    const now = new Date().toLocaleString('es-MX', {dateStyle:'medium', timeStyle:'short'});
+    document.getElementById('last-update').textContent = `SERVICIOS 2026 · Actualizado: ${now}`;
+    showToast(`✓ ${DATA.length} servicios actualizados desde Monday.com`);
+  } catch (err) {
+    showToast('Error al conectar con Monday.com: ' + err.message, true);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove('spin');
+    icon.textContent = '↻';
+    label.textContent = 'Actualizar datos';
+  }
+}
+
+// ─── Charts ───────────────────────────────────────────────────────────────────
+const BLUE   = '#2E3F8F';
+const BLUE2  = '#4A5BA8';
+const BLUE3  = '#7B8FD0';
+const BLUE4  = '#B0BCE8';
+const AMBER  = '#C97A00';
+const RED    = '#DC3545';
+const GREEN  = '#198754';
+const GRAY   = '#ADB5BD';
+
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { callbacks: {} } },
+  animation: { duration: 400 }
+};
+
+let charts = {};
+
+function buildCharts(data) {
+  const d = data.length ? data : DATA;
+
+  // ── 1. Venta por cliente (horizontal bar) ──
+  const byCliente = {};
+  d.forEach(r => { byCliente[r.cliente] = (byCliente[r.cliente] || 0) + r.venta; });
+  const clienteEntries = Object.entries(byCliente).sort((a,b) => b[1]-a[1]);
+  const clienteLabels = clienteEntries.map(e => e[0]);
+  const clienteData   = clienteEntries.map(e => Math.round(e[1]));
+  const blueShades = [BLUE, BLUE2, BLUE3, BLUE4, '#C5CCE8', '#DDE1F4'];
+
+  if (charts.cliente) charts.cliente.destroy();
+  charts.cliente = new Chart(document.getElementById('chartCliente'), {
+    type: 'bar',
+    data: {
+      labels: clienteLabels,
+      datasets: [{
+        data: clienteData,
+        backgroundColor: clienteLabels.map((_, i) => blueShades[i % blueShades.length]),
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          grid: { color: '#F1F3F5' },
+          ticks: { font: { size: 11 }, callback: v => '$' + (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v) }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString('es-MX') } }
+      }
+    }
+  });
+
+  // ── 2. Distribución por tipo de servicio (donut) ──
+  const byTipo = {};
+  d.forEach(r => { byTipo[r.tipo] = (byTipo[r.tipo] || 0) + 1; });
+  const tipoColors = {
+    'Ingeniero en Sitio': BLUE,
+    'Servicio Administrado': AMBER,
+    'Bolsa de Tickets': GREEN,
+    'Monitoreo Administrado': BLUE3
+  };
+  const tipoLabels = Object.keys(byTipo);
+  const tipoData   = tipoLabels.map(k => byTipo[k]);
+  const tipoBg     = tipoLabels.map(k => tipoColors[k] || GRAY);
+
+  if (charts.tipo) charts.tipo.destroy();
+  charts.tipo = new Chart(document.getElementById('chartTipo'), {
+    type: 'doughnut',
+    data: {
+      labels: tipoLabels,
+      datasets: [{ data: tipoData, backgroundColor: tipoBg, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '60%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { font: { size: 10 }, padding: 8, usePointStyle: true, pointStyleWidth: 8 }
+        },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} servicio${ctx.raw!==1?'s':''}` } }
+      }
+    }
+  });
+
+  // ── 3. Distribución por nivel (horizontal bar — espacio wide) ──
+  const byNivel = {};
+  d.forEach(r => { byNivel[r.nivel] = (byNivel[r.nivel] || 0) + 1; });
+  const nivelColors = { ORO: AMBER, PLATA: GRAY, 'ING SITIO': BLUE, 'BOLSA TICKETS': GREEN };
+  const nivelEntries = Object.entries(byNivel).sort((a,b) => b[1]-a[1]);
+  const nivelLabels = nivelEntries.map(e => e[0]);
+  const nivelData   = nivelEntries.map(e => e[1]);
+  const nivelBg     = nivelLabels.map(k => nivelColors[k] || GRAY);
+
+  if (charts.nivel) charts.nivel.destroy();
+  charts.nivel = new Chart(document.getElementById('chartNivel'), {
+    type: 'bar',
+    data: {
+      labels: nivelLabels,
+      datasets: [{
+        data: nivelData,
+        backgroundColor: nivelBg,
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          grid: { color: '#F1F3F5' },
+          ticks: { font: { size: 11 }, stepSize: 1 }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} servicio${ctx.raw!==1?'s':''}` } }
+      }
+    }
+  });
+
+  // ── 4. Vencimiento de contratos (donut) ──
+  let vUrgente = 0, vProximo = 0, vOk = 0, vSinFecha = 0;
+  d.forEach(r => {
+    const dx = days(r.fin);
+    if (dx === null) vSinFecha++;
+    else if (dx < 0) vUrgente++;
+    else if (dx <= 30) vUrgente++;
+    else if (dx <= 90) vProximo++;
+    else vOk++;
+  });
+
+  if (charts.venc) charts.venc.destroy();
+  charts.venc = new Chart(document.getElementById('chartVenc'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Urgente (<30 días)', 'Próximo (30-90 días)', 'Vigente (>90 días)', 'Sin fecha'],
+      datasets: [{ data: [vUrgente, vProximo, vOk, vSinFecha], backgroundColor: [RED, AMBER, GREEN, GRAY], borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '60%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { font: { size: 11 }, padding: 8, usePointStyle: true, pointStyleWidth: 8 }
+        },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+      }
+    }
+  });
+
+  // ── 5. No. de pólizas por cliente (horizontal bar, full width) ──
+  const polizasMap = {};
+  d.forEach(r => { polizasMap[r.cliente] = (polizasMap[r.cliente] || 0) + 1; });
+  const polizasEntries = Object.entries(polizasMap).sort((a,b) => b[1]-a[1]);
+  const polizasLabels  = polizasEntries.map(e => e[0]);
+  const polizasData    = polizasEntries.map(e => e[1]);
+
+  if (charts.polizas) charts.polizas.destroy();
+  charts.polizas = new Chart(document.getElementById('chartPolizas'), {
+    type: 'bar',
+    data: {
+      labels: polizasLabels,
+      datasets: [{
+        data: polizasData,
+        backgroundColor: polizasLabels.map((_, i) => blueShades[i % blueShades.length]),
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          grid: { color: '#F1F3F5' },
+          ticks: { font: { size: 11 }, stepSize: 1 }
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} póliza${ctx.raw!==1?'s':''}` } }
+      }
+    }
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+populateDropdowns();
+render();
+</script>
+</body>
+</html>
